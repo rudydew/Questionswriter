@@ -33,12 +33,15 @@ parser.add_argument('--category', type=str, help='Category name for the WordPres
 parser.add_argument('--fetch', type=str, help='Fetch a keyword with a specific subcategory.')
 parser.add_argument('--limit', type=int, default=1, help='Limit the number of main keywords to process.')
 parser.add_argument('--site', type=str, help='Site to post the article on.', required=True)
+parser.add_argument('--skipsupport', action='store_true', help='Skip generating supporting articles.')
 args = parser.parse_args()
 
 # Use the category argument value
 category_name = args.category
 # Use the fetch argument value if provided
 subcategory = args.fetch
+
+print(f"Skip support articles: {args.skipsupport}")
 
 
 
@@ -995,19 +998,25 @@ def create_and_post_supporting_articles(paa_questions, main_article_url, main_ar
 
 
 
-
-
 def process_keyword(keyword_data, category_name, wp_api_url, wp_auth_header, wp_media_endpoint):
     print("Processing keyword:", keyword_data['question'])
-    
+
     # Fetch "People Also Ask" questions and other related information for the keyword
+    print("Fetching additional information for keyword...")
     people_also_ask_questions, top_search_results, related_searches = fetch_additional_information(keyword_data['question'])
+    print(f"Fetched {len(people_also_ask_questions)} PAA questions, {len(top_search_results)} search results, {len(related_searches)} related searches")
 
     # Fetch or create a WordPress tag using the main article keyword
+    print("Fetching or creating WordPress tag...")
     main_article_keyword = keyword_data['question']  # This is your main keyword
     tag_id = fetch_or_create_wordpress_tag(main_article_keyword)
+    if tag_id:
+        print(f"Tag ID: {tag_id}")
+    else:
+        print("Failed to fetch or create WordPress tag.")
 
     # Generate and post the main article using the main_article_keyword directly
+    print("Generating content for main article...")
     title, content = generate_content(
         keyword=keyword_data['question'],
         is_supporting_article=False,
@@ -1019,36 +1028,44 @@ def process_keyword(keyword_data, category_name, wp_api_url, wp_auth_header, wp_
 
     meta_description = generate_meta_description(keyword_data['question'])
     latest_media_id = fetch_latest_media_id(wp_media_endpoint, wp_auth_header)
+    print(f"Latest media ID: {latest_media_id}")
 
     # Fetch or create the WordPress category using the provided category name
     if category_name:
+        print(f"Fetching or creating WordPress category for: {category_name}")
         category_id = fetch_or_create_wordpress_category(category_name)
+        if category_id:
+            print(f"Category ID: {category_id}")
+        else:
+            print("Failed to fetch or create WordPress category.")
     else:
         category_id = None
+        print("No category name provided.")
 
     # Temporarily post the main article as published to get the definitive URL
+    print("Posting article to WordPress...")
     post_id, temp_url = post_to_wordpress(title, content, meta_description, latest_media_id, tag_id, category_id, status='publish')
     
-    # Ensure the post was successfully created
     if post_id:
-        print(f"Temporarily published article. Post ID: {post_id}, Temp URL: {temp_url}")
+        print(f"Article posted. Post ID: {post_id}, Temporary URL: {temp_url}")
         
         # Immediately revert the article's status to pending and fetch the definitive URL
+        print("Reverting article to pending...")
         definitive_url = publish_and_revert_post(post_id, wp_api_url, wp_auth_header)
         if definitive_url:
-            print(f"Article reverted to pending. Definitive URL: {definitive_url}")
-            main_article_url = definitive_url  # Use this URL for internal linking in supporting articles
-            update_is_published(keyword_data['ID'])  # Mark the keyword as published in your database
+            print(f"Article reverted. Definitive URL: {definitive_url}")
+            main_article_url = definitive_url
+            update_is_published(keyword_data['ID'])
             
-            # With people_also_ask_questions populated, create and post supporting articles
-            create_and_post_supporting_articles(people_also_ask_questions, main_article_url, main_article_keyword, tag_id, category_id)  # Passing tag_id to be used for supporting articles
+            if not args.skipsupport:
+                print("Generating supporting articles...")
+                create_and_post_supporting_articles(people_also_ask_questions, main_article_url, main_article_keyword, tag_id, category_id)
+            else:
+                print("Skipping supporting articles as per --skipsupport flag.")
         else:
-            print("Failed to revert article to pending or fetch definitive URL.")
+            print("Failed to revert article or fetch definitive URL.")
     else:
-        print("Failed to post article.")
-
-
-print("Starting main execution flow...")
+        print("Failed to post main article.")
 
 # Assume args.limit is defined via argparse as shown previously
 processed_keywords = 0
@@ -1063,7 +1080,3 @@ while processed_keywords < args.limit:
 
 
     
-    
-
-
-
