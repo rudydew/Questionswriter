@@ -32,6 +32,7 @@ The script is designed to accept command-line arguments for dynamic operation. H
 --fetch: Fetch a keyword with a specific subcategory.
 --limit: Limit the number of main keywords to process. Default is 1.
 --site: The site to post the article on. This argument is required.
+--skipsupport: if this is set, it will only process the main keywords and skip the supporting articles
 Example Command
 
 python script.py --site ***REMOVED*** --category "Health" --fetch "Nutrition" --limit 2
