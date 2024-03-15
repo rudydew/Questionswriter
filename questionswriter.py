@@ -27,11 +27,54 @@ db_config = {
 # OpenAI Api key
 openai.api_key = '***REMOVED***'
 
-# WordPress REST API endpoint and credentials
-wp_endpoint = 'https://www.***REMOVED***.com/wp-json/wp/v2/posts'
-wp_media_endpoint = 'https://www.***REMOVED***.com/wp-json/wp/v2/media'
-wp_username = '***REMOVED***'
-wp_password = '***REMOVED***'  # Replace with your actual password
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Post articles to WordPress with a specified category.')
+parser.add_argument('--category', type=str, help='Category name for the WordPress post.')
+parser.add_argument('--fetch', type=str, help='Fetch a keyword with a specific subcategory.')
+parser.add_argument('--limit', type=int, default=1, help='Limit the number of main keywords to process.')
+parser.add_argument('--site', type=str, help='Site to post the article on.', required=True)
+args = parser.parse_args()
+
+# Use the category argument value
+category_name = args.category
+# Use the fetch argument value if provided
+subcategory = args.fetch
+
+
+
+site_configs = {
+    '***REMOVED***': {
+        'wp_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://***REMOVED***.com/wp-json/wp/v2/tags',
+        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_username': '***REMOVED***',
+        'wp_password': '***REMOVED***'
+    },
+    '***REMOVED***': {
+        'wp_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://***REMOVED***.com/wp-json/wp/v2/tags',
+        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_username': 'rudy@***REMOVED***.fr',
+        'wp_password': '***REMOVED***'
+    }
+}
+
+
+# Retrieve the site configuration based on the --site argument
+site_config = site_configs.get(args.site)
+if not site_config:
+    print(f"Configuration for site '{args.site}' not found.")
+    sys.exit(1)
+
+# Use the site-specific configuration
+wp_endpoint = site_config['wp_endpoint']
+wp_media_endpoint = site_config['wp_media_endpoint']
+wp_api_url = site_config['wp_api_url']
+wp_tags_endpoint = site_config['wp_tags_endpoint']
+wp_username = site_config['wp_username']
+wp_password = site_config['wp_password']
 auth = (wp_username, wp_password)
 wp_auth = f"{wp_username}:{wp_password}"
 wp_auth_header = "Basic " + base64.b64encode(wp_auth.encode()).decode()
@@ -55,7 +98,6 @@ def generate_wordpress_tag(keyword):
 
 
 def create_wordpress_tag(tag_name):
-    wp_tags_endpoint = 'https://***REMOVED***.com/wp-json/wp/v2/tags'
     data = {
         'name': tag_name
     }
@@ -70,7 +112,6 @@ def create_wordpress_tag(tag_name):
 
 def fetch_or_create_wordpress_tag(tag_name):
     # Check if the tag already exists
-    wp_tags_endpoint = 'https://***REMOVED***.com/wp-json/wp/v2/tags'
     response = requests.get(wp_tags_endpoint, params={'search': tag_name}, auth=auth)
     tags = response.json()
     
@@ -191,9 +232,7 @@ def adjust_image(img):
 def search_and_upload_photos(keyword, subheadings_count, wp_upload_endpoint, wp_auth):
     # First, generate a query for Pexels using the keyword
     prompt = f"in a single word, in english, what is this topic about?: '{keyword}'"
-    
-    # Assuming you have a function to call OpenAI's API similar to generate_with_model
-    pexels_query = generate_with_model("gpt-4-0125-preview", prompt, max_tokens=60).strip()
+    pexels_query = generate_with_model_retry(prompt, max_tokens=60).strip()
     print(f"Pexel query generated: \"{pexels_query}\"")
     
     url = "https://api.pexels.com/v1/search"
@@ -279,26 +318,32 @@ def update_is_published(keyword_id):
     connection.close()
     print("is_published updated successfully.")
 
-def generate_with_model(model, prompt, max_tokens=1000, temperature=0.7, stop_sequences=None):
+def generate_with_model(model, prompt, max_tokens=4096, temperature=0.7, **kwargs):
     attempt = 0
     max_attempts = 3
     retry_delay = 10  # seconds
-
+    
     while attempt < max_attempts:
         try:
+            messages = [
+                {"role": "system", "content": "Tu es un spécialiste de cette question."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            if 'role' in kwargs:
+                # Adjust 'messages' or handle 'role' as needed
+                pass  # Example placeholder for custom logic
+                
             response = openai.ChatCompletion.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": "Tu es un spécialiste de cette question."},
-                    {"role": "user", "content": prompt}
-                ],
+                messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                stop=stop_sequences
+                # Note: OpenAI's Chat API may not accept a 'stop' parameter directly
+                # stop=kwargs.get('stop', None)  # Example of handling an optional parameter
             )
             return response.choices[0].message['content'].strip()
         except (ServiceUnavailableError, APIError) as e:
-            # Check if the error is specifically due to a server shutdown
             if "server shutdown" in str(e) or isinstance(e, ServiceUnavailableError):
                 if attempt == max_attempts - 1:
                     raise  # Re-raise the last exception if all retries fail
@@ -309,6 +354,21 @@ def generate_with_model(model, prompt, max_tokens=1000, temperature=0.7, stop_se
                 raise  # If the error is not related to server issues, raise immediately
 
 
+def generate_with_model_retry(prompt, model="gpt-4-0125-preview", max_retries=3, **kwargs):
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = generate_with_model(model, prompt, **kwargs)
+            return response
+        except Exception as e:  # You can specify the exact exception types if you know them
+            print(f"OpenAI APIError: {e} - Retrying ({retries+1}/{max_retries})")
+            retries += 1
+            time.sleep(1)  # Simple exponential backoff or fixed delay can be implemented here
+    raise Exception(f"Failed to get response from OpenAI API after {max_retries} retries.")
+
+
+
+
 def generate_meta_description(keyword):
     # Initial prompt with length instructions
     prompt = f"écrire une meta description concise pour le mot clef: '{keyword}'. La meta description doit donner envie de cliquer et intriguer le lecteur, elle doit inclure le mot clef et être entre 120 et 158 caractères."
@@ -316,7 +376,7 @@ def generate_meta_description(keyword):
     # Attempt to generate a meta description that fits the length requirements
     retry_count = 0
     while retry_count < 10:  # Limit the number of retries to avoid infinite loops
-        meta_description = generate_with_model("gpt-3.5-turbo-0125", prompt, max_tokens=200).strip()
+        meta_description = generate_with_model_retry(prompt, model="gpt-3.5-turbo-0125", max_tokens=200).strip()
         # Remove double quotes at the beginning and at the end, if any
         meta_description = meta_description.strip('"')
         
@@ -391,7 +451,7 @@ def generate_opinion_section_with_paragraphs(keyword, related_searches):
     queries_str = ", ".join(related_searches[:-1]) + " et " + related_searches[-1] if len(related_searches) > 1 else related_searches[0]
     prompt = f"Ecrire à la première personne un texte d'opinion sur la question {keyword}, inclure une anecdote et utiliser les expressions suivantes: {queries_str}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
     
-    opinion_text = generate_with_model("gpt-4-0125-preview", prompt, max_tokens=4096)
+    opinion_text = generate_with_model_retry(prompt, model="gpt-4-0125-preview", max_tokens=4096)
     
     # Use the updated splitting logic.
     paragraphs = split_into_paragraphs(opinion_text)
@@ -472,7 +532,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     
     # Initial title generation attempt
     title_prompt = f"Utiliser les informations contenues dans ce résumé: {combined_summary} : Générer un titre concis (moins de 60 caractères) pour un article sur '{keyword}'. Le titre doit inclure le mot clef exact au début, et des parenthèses. ne pas inclure l'année."
-    title = generate_with_model("gpt-4-0125-preview", title_prompt)
+    title = generate_with_model_retry(title_prompt, model="gpt-4-0125-preview")
 
     # Remove double quotes from the title and initialize shortest_title
     title = title.replace('"', '')
@@ -482,7 +542,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     retry_count = 0
     while retry_count < 15:
         print(f"Title too long ({len(shortest_title)} characters), trying again.")
-        title = generate_with_model("gpt-4-0125-preview", title_prompt)
+        title = generate_with_model_retry(title_prompt, model="gpt-4-0125-preview")
         
         # Remove double quotes from the generated title before further processing
         title = title.replace('"', '')
@@ -498,7 +558,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
     # Generate introduction
     intro_prompt = f"Utiliser les informations contenues dans ce résumé pour écrire une introduction de deux phrases pour un article ciblant le mot clef: {keyword}: {combined_summary}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
-    intro = generate_with_model("gpt-4-0125-preview", intro_prompt, max_tokens=1000)
+    intro = generate_with_model_retry(intro_prompt, model="gpt-4-0125-preview", max_tokens=1000)
     intro_block = f"<!-- wp:paragraph -->\n<p>{intro}</p>\n<!-- /wp:paragraph -->"
 
     # Keyword paragraph block
@@ -506,7 +566,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
     # Generate direct answer
     direct_answer_prompt = f"Utiliser les informations contenues dans ce résumé: - {combined_summary} - écrire une réponse directe, d'une seule phrase, et qui peut se lire en dehors de tout autre contexte, comme une réponse d'encyclopédie, à la question {keyword}."
-    direct_answer = generate_with_model("gpt-3.5-turbo-0125", direct_answer_prompt, max_tokens=1000)
+    direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-3.5-turbo-0125", max_tokens=1000)
     global main_article_question_answer
     main_article_question_answer = direct_answer
     direct_answer_block = f"<!-- wp:paragraph -->\n<p><b>{direct_answer}</b></p>\n<!-- /wp:paragraph -->"
@@ -519,7 +579,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
     # Generate subheadings and corresponding paragraphs
     subheading_prompt = f"Utiliser les informations contenues dans ce résumé: -- {combined_summary} -- Générer 2 à 4 sous-titres pour un article sur le sujet: '{keyword}' permettant de couvrir le sujet totalement; Ne pas utiliser de numéros, ne pas générer de sous-titre d'introduction ou de conclusion."
-    subheadings = generate_with_model("gpt-4-0125-preview", subheading_prompt, max_tokens=1000).split('\n')
+    subheadings = generate_with_model_retry(subheading_prompt, model="gpt-4-0125-preview", max_tokens=1000).split('\n')
 
     # Print and clean the generated subheadings
     cleaned_subheadings = []
@@ -559,7 +619,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     for subheading in cleaned_subheadings:
         subheading_block = f"<!-- wp:heading -->\n<h2>{subheading}</h2>\n<!-- /wp:heading -->\n"
         paragraph_prompt = f"Dans un article intitulé {keyword}, écrire les paragraphes pour le sous-titre: {subheading}, en utilisant la balise <b> pour les mots importants. Ne pas écrire le sous-titre ni faire d'introduction. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
-        paragraph = generate_with_model("gpt-4-0125-preview", paragraph_prompt, max_tokens=4096)
+        paragraph = generate_with_model_retry(paragraph_prompt, model="gpt-4-0125-preview", max_tokens=4096)
         
         paragraphs = paragraph.split('\n')
         paragraph_blocks = ""
@@ -622,7 +682,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     
         # Generate a direct answer for the question
         direct_answer_prompt = f"écrire une réponse directe à la question: '{question}'. Répondre comme une encyclopédie, la réponse doit pouvoir être lue seule en dehors de tout contexte (sans avoir vu la question)."
-        direct_answer = generate_with_model("gpt-3.5-turbo-0125", direct_answer_prompt, max_tokens=500)
+        direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=500)
     
         # Wrap the answer in a paragraph Gutenberg block
         answer_block = f"<!-- wp:paragraph -->\n<p>{direct_answer}</p>\n<!-- /wp:paragraph -->\n"
@@ -661,19 +721,18 @@ def generate_table_summary(combined_summary):
         "Utiliser les informations de cet article:\n\n"
         f"{combined_summary}"
     )
-    response = openai.ChatCompletion.create(
+    # Assuming generate_with_model_retry can handle parameters for ChatCompletion
+    table_summary = generate_with_model_retry(
+        prompt=prompt,
         model="gpt-4-0125-preview",
-        messages=[
-            {"role": "system", "content": prompt}
-        ],
         temperature=0.5,
         max_tokens=1024,  # Adjust based on the complexity of your content
-        stop=None
+        role="system"  # This parameter and how you handle it might need to be adjusted based on your implementation of generate_with_model_retry
     )
-    table_summary = response.choices[0].message['content'].strip()
     # Remove any occurrences of "**"
     table_summary = table_summary.replace("**", "")
     return table_summary
+
 
 
 
@@ -864,23 +923,21 @@ def generate_combined_summary(contents):
     
     print("Generating combined summary...")  # Inform the user that summary generation is starting.
     
-    # Generate the initial combined summary
-    initial_response = openai.ChatCompletion.create(
+    # Adapted to use generate_with_model_retry, assuming it can handle parameters for ChatCompletion
+    combined_summary = generate_with_model_retry(
+        prompt=combined_summary_prompt,
         model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": combined_summary_prompt}
-        ],
         temperature=0.5,
-        stop=None
-    )
-    
-    combined_summary = initial_response.choices[0].message['content'].strip()
+        max_tokens=1024,  # Adjust based on the complexity of your content, ensure this parameter is handled by generate_with_model_retry
+        role="system"  # Make sure to adjust your generate_with_model_retry to handle this parameter if necessary
+    ).strip()
     
     # Print the generated summary
     print("Generated Combined Summary:")
     print(combined_summary)
         
     return combined_summary
+
 
 
 
@@ -936,21 +993,6 @@ def create_and_post_supporting_articles(paa_questions, main_article_url, main_ar
 
 
 
-
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description='Post articles to WordPress with a specified category.')
-parser.add_argument('--category', type=str, help='Category name for the WordPress post.')
-parser.add_argument('--fetch', type=str, help='Fetch a keyword with a specific subcategory.')
-parser.add_argument('--limit', type=int, default=1, help='Limit the number of main keywords to process.')
-args = parser.parse_args()
-
-# Use the category argument value
-category_name = args.category
-# Use the fetch argument value if provided
-subcategory = args.fetch
-
-
-wp_api_url = 'https://www.***REMOVED***.com/wp-json'
 
 
 
