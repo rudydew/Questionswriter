@@ -566,7 +566,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
     # Generate direct answer
     direct_answer_prompt = f"Utiliser les informations contenues dans ce résumé: - {combined_summary} - écrire une réponse directe, d'une seule phrase, et qui peut se lire en dehors de tout autre contexte, comme une réponse d'encyclopédie, à la question {keyword}."
-    direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-3.5-turbo-0125", max_tokens=1000)
+    direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-3.5-turbo-0125", max_tokens=200)
     global main_article_question_answer
     main_article_question_answer = direct_answer
     direct_answer_block = f"<!-- wp:paragraph -->\n<p><b>{direct_answer}</b></p>\n<!-- /wp:paragraph -->"
@@ -599,7 +599,6 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     # Call the function to search for photos, download them, and upload to WordPress
 
     # Define WordPress media upload endpoint and authentication credentials before using them
-    wp_media_endpoint = 'https://wordpress-460823-4353340.cloudwaysapps.com/wp-json/wp/v2/media'
     wp_auth = f"{wp_username}:{wp_password}"  # This might need encoding or specific formatting depending on your auth method
     
     # Generate Basic Auth Header (if required by your WordPress setup)
@@ -681,8 +680,8 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
         question_block = f"<!-- wp:heading {{\"level\":3}} -->\n<h3>{question}</h3>\n<!-- /wp:heading -->\n"
     
         # Generate a direct answer for the question
-        direct_answer_prompt = f"écrire une réponse directe à la question: '{question}'. Répondre comme une encyclopédie, la réponse doit pouvoir être lue seule en dehors de tout contexte (sans avoir vu la question)."
-        direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=500)
+        direct_answer_prompt = f"écrire une réponse de une ou deux phrases maximum, directe à la question: '{question}'. La réponse doit pouvoir être lue seule en dehors de tout contexte (sans avoir vu la question)."
+        direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=200)
     
         # Wrap the answer in a paragraph Gutenberg block
         answer_block = f"<!-- wp:paragraph -->\n<p>{direct_answer}</p>\n<!-- /wp:paragraph -->\n"
