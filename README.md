@@ -50,3 +50,14 @@ Modify the db_config and site_configs variables in the script to match your MySQ
 ## Important Note
 
 Ensure that you have valid credentials for the MySQL database, OpenAI API, and WordPress site configured in the script. Incorrect configurations may lead to execution errors.
+
+For the Yoast meta description field to work, add the following to your theme's functions.php: 
+
+/*** Rest api field for yoast meta desc ***/
+add_action('init', function() {
+    register_post_meta('post', '_yoast_wpseo_metadesc', [
+        'single' => true,
+        'type' => 'string',
+        'show_in_rest' => true,
+    ]);
+});
