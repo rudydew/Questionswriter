@@ -14,6 +14,7 @@ import time
 from bs4 import BeautifulSoup
 from io import BytesIO
 from PIL import Image, ImageEnhance, ImageOps
+from openai.error import APIError, ServiceUnavailableError
 
 # MySQL database credentials
 db_config = {
@@ -296,12 +297,16 @@ def generate_with_model(model, prompt, max_tokens=1000, temperature=0.7, stop_se
                 stop=stop_sequences
             )
             return response.choices[0].message['content'].strip()
-        except openai.error.ServiceUnavailableError:
-            if attempt == max_attempts - 1:
-                raise  # Re-raise the last exception if all retries fail
-            print(f"Attempt {attempt + 1} of {max_attempts} failed due to server unavailability. Retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)
-            attempt += 1
+        except (ServiceUnavailableError, APIError) as e:
+            # Check if the error is specifically due to a server shutdown
+            if "server shutdown" in str(e) or isinstance(e, ServiceUnavailableError):
+                if attempt == max_attempts - 1:
+                    raise  # Re-raise the last exception if all retries fail
+                print(f"Attempt {attempt + 1} of {max_attempts} failed due to server issue: {str(e)}. Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                attempt += 1
+            else:
+                raise  # If the error is not related to server issues, raise immediately
 
 
 def generate_meta_description(keyword):
