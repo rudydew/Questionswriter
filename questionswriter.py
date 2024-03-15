@@ -46,7 +46,8 @@ site_configs = {
     '***REMOVED***': {
         'wp_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/posts',
         'wp_media_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/media',
-        'wp_tags_endpoint' : 'https://***REMOVED***.com/wp-json/wp/v2/tags',
+        'wp_tags_endpoint' : 'https://www.***REMOVED***.com/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://www.***REMOVED***.com/wp-json/wp/v2/categories',
         'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
         'wp_username': '***REMOVED***',
         'wp_password': '***REMOVED***'
@@ -54,8 +55,9 @@ site_configs = {
     '***REMOVED***': {
         'wp_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/posts',
         'wp_media_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/media',
-        'wp_tags_endpoint' : 'https://***REMOVED***.com/wp-json/wp/v2/tags',
-        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_tags_endpoint' : 'https://***REMOVED***.fr/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://***REMOVED***.fr/wp-json/wp/v2/categories',
+        'wp_api_url' : 'https://***REMOVED***.fr/wp-json',
         'wp_username': 'rudy@***REMOVED***.fr',
         'wp_password': '***REMOVED***'
     }
@@ -73,6 +75,7 @@ wp_endpoint = site_config['wp_endpoint']
 wp_media_endpoint = site_config['wp_media_endpoint']
 wp_api_url = site_config['wp_api_url']
 wp_tags_endpoint = site_config['wp_tags_endpoint']
+wp_categories_endpoint = site_config['wp_categories_endpoint']
 wp_username = site_config['wp_username']
 wp_password = site_config['wp_password']
 auth = (wp_username, wp_password)
@@ -773,7 +776,6 @@ def integrate_table_summary(article_content):
 
 
 def fetch_or_create_wordpress_category(category_name):
-    wp_categories_endpoint = 'https://wordpress-460823-4353340.cloudwaysapps.com/wp-json/wp/v2/categories'
     response = requests.get(wp_categories_endpoint, params={'search': category_name}, auth=auth)
     categories = response.json()
     
