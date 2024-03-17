@@ -63,7 +63,17 @@ site_configs = {
         'wp_api_url' : 'https://***REMOVED***.fr/wp-json',
         'wp_username': 'rudy@***REMOVED***.fr',
         'wp_password': '***REMOVED***'
+    },
+    '***REMOVED***': {
+        'wp_endpoint': 'https://***REMOVED***.co/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://***REMOVED***.co/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://***REMOVED***.co/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://***REMOVED***.co/wp-json/wp/v2/categories',
+        'wp_api_url' : 'https://***REMOVED***.co/wp-json',
+        'wp_username': '***REMOVED***',
+        'wp_password': '***REMOVED***'
     }
+
 }
 
 
@@ -91,7 +101,7 @@ main_article_question_answer = None
 def generate_wordpress_tag(keyword):
     prompt = f"Generate a concise, relevant tag for an article about '{keyword}'. The tag should reflect the core topic and be suitable for SEO purposes."
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4-0125-preview",
         messages=[
             {"role": "system", "content": "You're an AI trained to assist with digital content creation, including SEO optimization."},
             {"role": "user", "content": prompt}
@@ -143,7 +153,7 @@ def fetch_or_create_wordpress_tag(tag_name):
 
 
 def generate_image_metadata(keyword, photo_id):
-    model = "gpt-3.5-turbo"
+    model = "gpt-4-0125-preview"
     
     # Generate an alt tag using OpenAI based on the keyword
     prompt = f"Générer un alt tag descriptif mais court pour une image sur le sujet: {keyword}."
@@ -237,7 +247,7 @@ def adjust_image(img):
 
 def search_and_upload_photos(keyword, subheadings_count, wp_upload_endpoint, wp_auth):
     # First, generate a query for Pexels using the keyword
-    prompt = f"in a single word, in english, what is this topic about?: '{keyword}'"
+    prompt = f"in a one or two words, in english, what is this topic about?: '{keyword}'"
     pexels_query = generate_with_model_retry(prompt, max_tokens=60).strip()
     print(f"Pexel query generated: \"{pexels_query}\"")
     
@@ -382,7 +392,7 @@ def generate_meta_description(keyword):
     # Attempt to generate a meta description that fits the length requirements
     retry_count = 0
     while retry_count < 10:  # Limit the number of retries to avoid infinite loops
-        meta_description = generate_with_model_retry(prompt, model="gpt-3.5-turbo-0125", max_tokens=200).strip()
+        meta_description = generate_with_model_retry(prompt, model="gpt-4-0125-preview", max_tokens=200).strip()
         # Remove double quotes at the beginning and at the end, if any
         meta_description = meta_description.strip('"')
         
@@ -572,7 +582,7 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
     # Generate direct answer
     direct_answer_prompt = f"Utiliser les informations contenues dans ce résumé: - {combined_summary} - écrire une réponse directe, d'une seule phrase, et qui peut se lire en dehors de tout autre contexte, comme une réponse d'encyclopédie, à la question {keyword}."
-    direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-3.5-turbo-0125", max_tokens=200)
+    direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=200)
     global main_article_question_answer
     main_article_question_answer = direct_answer
     direct_answer_block = f"<!-- wp:paragraph -->\n<p><b>{direct_answer}</b></p>\n<!-- /wp:paragraph -->"
@@ -930,7 +940,7 @@ def generate_combined_summary(contents):
     # Adapted to use generate_with_model_retry, assuming it can handle parameters for ChatCompletion
     combined_summary = generate_with_model_retry(
         prompt=combined_summary_prompt,
-        model="gpt-3.5-turbo",
+        model="gpt-4-0125-preview",
         temperature=0.5,
         max_tokens=1024,  # Adjust based on the complexity of your content, ensure this parameter is handled by generate_with_model_retry
         role="system"  # Make sure to adjust your generate_with_model_retry to handle this parameter if necessary
