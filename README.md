@@ -28,14 +28,18 @@ Install the required Python libraries as mentioned above.
 
 The script is designed to accept command-line arguments for dynamic operation. Here are the options you can use:
 
---category: The category name for the WordPress post.
---fetch: Fetch a keyword with a specific subcategory.
---limit: Limit the number of main keywords to process. Default is 1.
---site: The site to post the article on. This argument is required.
---skipsupport: if this is set, it will only process the main keywords and skip the supporting articles
-Example Command
+- `--category`: The category name for the WordPress post.
+- `--fetch`: Fetch a keyword with a specific subcategory.
+- `--limit`: Limit the number of main keywords to process. Default is 1.
+- `--site`: The site to post the article on. This argument is required.
+- `--skipsupport`: if this is set, it will only process the main keywords and skip the supporting articles.
+- `--language`: set to either fr/en/es, this will change the prompts language and serper api request to relevant country code.
 
-python script.py --site ***REMOVED*** --category "Health" --fetch "Nutrition" --limit 2
+### Example Command
+
+```bash
+python script.py --site ***REMOVED*** --category "Health" --fetch "Nutrition" --limit 2 --language fr --skipsupport
+```
 
 ## Features
 
