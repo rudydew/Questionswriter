@@ -34,6 +34,7 @@ parser.add_argument('--fetch', type=str, help='Fetch a keyword with a specific s
 parser.add_argument('--limit', type=int, default=1, help='Limit the number of main keywords to process.')
 parser.add_argument('--site', type=str, help='Site to post the article on.', required=True)
 parser.add_argument('--skipsupport', action='store_true', help='Skip generating supporting articles.')
+parser.add_argument('--language', type=str, default='en', help='Language for prompts and messages.')
 args = parser.parse_args()
 
 # Use the category argument value
@@ -76,6 +77,74 @@ site_configs = {
 
 }
 
+# Dictionary of prompts organized by language code
+prompts = {
+    'fr': {
+        'COUNTRY_CODE': "fr",
+        'PROMPT_GENERATE_IMAGE_METADATA': "Générer un alt tag descriptif mais court pour une image sur le sujet: {keyword}.",
+        'PROMPT_GENERATE_META_DESCRIPTION': "écrire une meta description concise pour le mot clef: '{keyword}'. La meta description doit donner envie de cliquer et intriguer le lecteur, elle doit inclure le mot clef et être entre 120 et 158 caractères.",
+        'PROMPT_GENERATE_OPINION_SECTION' : "Ecrire à la première personne un texte d'opinion sur la question {keyword}, inclure une anecdote et utiliser les expressions suivantes: {queries_str}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel.",
+        'TITLE_GENERATE_OPINION_SECTION' : "Mon avis (opinion)",
+        'PROMPT_GENERATE_COMBINED_SUMMARY' : "Résumer ces articles en un récapitulatif exhaustif:\n\n",
+        'PROMPT_GENERATE_TITLE' : "Utiliser les informations contenues dans ce résumé: {combined_summary} : Générer un titre concis (moins de 60 caractères) pour un article sur '{keyword}'. Le titre doit inclure le mot clef exact au début, et des parenthèses. ne pas inclure l'année.",
+        'PROMPT_GENERATE_INTRO' : "Utiliser les informations contenues dans ce résumé pour écrire une introduction de deux phrases pour un article ciblant le mot clef: {keyword}: {combined_summary}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel.",
+        'PROMPT_GENERATE_DIRECT_ANSWER' : "Utiliser les informations contenues dans ce résumé: - {combined_summary} - écrire une réponse directe, d'une seule phrase, et qui peut se lire en dehors de tout autre contexte, comme une réponse d'encyclopédie, à la question {keyword}.",
+        'PROMPT_GENERATE_SUBHEADINGS' : "Utiliser les informations contenues dans ce résumé: -- {combined_summary} -- Générer 2 à 4 sous-titres pour un article sur le sujet: '{keyword}' permettant de couvrir le sujet totalement; Ne pas utiliser de numéros, ne pas générer de sous-titre d'introduction ou de conclusion.",
+        'PROMPT_GENERATE_PARAGRAPH' : "Dans un article intitulé '{keyword}', écrire les paragraphes pour le sous-titre: '{subheading}', en utilisant la balise <b> pour les mots importants. Ne pas écrire le sous-titre ni faire d'introduction. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel.",
+        'TITLE_RECAP_SECTION' : "Récapitulatif",
+        'TITLE_FAQ_SECTION' : "Questions fréquentes",
+        'TITLE_INTERNAL_LINK' : "Pour plus d'informations, voir mon article sur: <a href='{main_article_url}'>{main_article_keyword} ",
+        'TITLE_EXTERNAL_LINK' : "Liens Utiles",
+        'PROMPT_GENERATE_FAQ_ANSWER' : "écrire une réponse de une ou deux phrases maximum, directe à la question: '{question}'. La réponse doit pouvoir être lue seule en dehors de tout contexte (sans avoir vu la question).",
+        'PROMPT_GENERATE_TABLE_SUMMARY' : "A partir de ces informations, créer un tableau utile pour le lecteur pour comprendre rapidement le sujet. Le tableau doit être facile a lire pour un utilisateur comme pour un moteur de recherche. Utiliser les informations de cet article: '{combined_summary}'"
+    },
+    'en': {
+        'COUNTRY_CODE': "",
+        'PROMPT_GENERATE_IMAGE_METADATA': "Generate a short but descriptive image alt tag that would be relevant to: '{keyword}'.",
+        'PROMPT_GENERATE_META_DESCRIPTION': "Write a concise meta description for the keyword: '{keyword}'. The meta description must make the reader want to click and intrigue him/her. It must include the keyword and be between 120 and 158 characters long.",
+        'PROMPT_GENERATE_OPINION_SECTION' : "Write a first-person opinion piece on the issue {keyword}, include an anecdote and use the following expressions: {queries_str}. Style instructions: Make sure paragraphs and sentence lengths are heterogeneous, sticking mainly to short, direct sentences. Don't include any filler. Every sentence should add value. Don't always use the most natural words. Be conversational, empathetic, occasionally humorous, and use idioms, metaphors, anecdotes, and natural dialogue.",
+        'TITLE_GENERATE_OPINION_SECTION' : "In my experience (Opinion)",
+        'PROMPT_GENERATE_COMBINED_SUMMARY' : "Summarize these articles in a comprehensive summary:\n\n",
+        'PROMPT_GENERATE_TITLE' : "Use the information contained in this summary: {combined_summary}: Generate a concise title (less than 60 characters) for an article on '{keyword}'. The title should include the exact keyword at the beginning, and parentheses. Do not include the year.",
+        'PROMPT_GENERATE_INTRO' : "Use the information in this summary to write a two-sentence introduction for an article targeting the keyword: {keyword}: {combined_summary}. Style instructions: Make sure paragraphs and sentence lengths are heterogeneous, sticking mainly to short, direct sentences. Don't include any filler. Every sentence should add value. Don't always use the most natural words. Be conversational, empathetic, occasionally humorous, and use idioms, metaphors, anecdotes, and natural dialogue.",
+        'PROMPT_GENERATE_DIRECT_ANSWER' : "Use the information contained in this summary: - {combined_summary} - write a direct, one-sentence answer, which can be read outside any other context, like an encyclopedia answer, to the question {keyword}.",
+        'PROMPT_GENERATE_SUBHEADINGS' : "Use the information contained in this summary: -- {combined_summary} -- Generate 2 to 4 subheadings for an article on the subject: '{keyword}' to cover the topic completely; Do not use numbers, do not generate an introduction or conclusion subheading.",
+        'PROMPT_GENERATE_PARAGRAPH' : "In an article entitled '{keyword}', write the paragraphs for the subheading: '{subheading}', using the <b> tag for important words. Do not write the subheading or make an introduction. Style instructions: Make sure paragraphs and sentence lengths are heterogeneous, sticking mainly to short, direct sentences. Don't include any filler. Every sentence should add value. Don't always use the most natural words. Be conversational, empathetic, occasionally humorous, and use idioms, metaphors, anecdotes, and natural dialogue.",
+        'TITLE_RECAP_SECTION' : "Summary Table",
+        'TITLE_FAQ_SECTION' : "Frequently Asked Questions",
+        'TITLE_INTERNAL_LINK' : "For more detailed information, see my article on: <a href='{main_article_url}'>{main_article_keyword} ",
+        'TITLE_EXTERNAL_LINK' : "Resources",
+        'PROMPT_GENERATE_FAQ_ANSWER' : "write a direct answer of one or two sentences maximum to the question: '{question}'. The answer must be able to be read on its own without any context (without having seen the question).",
+        'PROMPT_GENERATE_TABLE_SUMMARY' : "From this information, create a useful table for the reader to quickly understand the subject. The table should be easy to read for both a user and a search engine. Use the information from this article: '{combined_summary}'"
+
+    },
+    'es': {
+        'COUNTRY_CODE': "es",
+        'PROMPT_GENERATE_IMAGE_METADATA': "Genera una etiqueta alt de imagen corta pero descriptiva que sea relevante para: '{keyword}'.",
+        'PROMPT_GENERATE_META_DESCRIPTION': "Escriba una meta descripción concisa para la palabra clave: '{keyword}'. La meta descripción debe hacer que el lector quiera hacer clic e intrigarle. Debe incluir la palabra clave y tener entre 120 y 158 caracteres.",
+        'PROMPT_GENERATE_OPINION_SECTION' : "Escriba un artículo de opinión en primera persona sobre el tema {keyword}, incluya una anécdota y utilice las siguientes expresiones: {queries_str}. Normas de estilo: Procure que los párrafos y la longitud de las frases sean heterogéneos, ciñéndose principalmente a frases cortas y directas. No incluya relleno. Cada frase debe aportar un valor añadido. No utilice siempre las palabras más naturales. Sea conversacional, empático, ocasionalmente humorístico, y utilice modismos, metáforas, anécdotas y diálogos naturales.",
+        'TITLE_GENERATE_OPINION_SECTION' : "En mi experiencia",
+        'PROMPT_GENERATE_COMBINED_SUMMARY' : "Resumir estos artículos en una síntesis exhaustiva:\n\n",
+        'PROMPT_GENERATE_TITLE' : "Utilice la información contenida en este resumen: {combined_summary} : Genere un título conciso (menos de 60 caracteres) para un artículo sobre '{keyword}'. El título debe incluir la palabra clave exacta al principio y entre paréntesis. No incluya el año.",
+        'PROMPT_GENERATE_INTRO' : "Utilice la información de este resumen para redactar una introducción de dos frases para un artículo dirigido a la palabra clave: {keyword}: {combined_summary}. Normas de estilo: Procure que los párrafos y la longitud de las frases sean heterogéneos, ciñéndose principalmente a frases cortas y directas. No incluyas relleno. Cada frase debe aportar un valor añadido. No utilices siempre las palabras más naturales. Sea conversacional, empático, ocasionalmente humorístico, y utilice modismos, metáforas, anécdotas y diálogos naturales.",
+        'PROMPT_GENERATE_DIRECT_ANSWER' : "Utilice la información contenida en este resumen: - {combined_summary} - escriba una respuesta directa, de una sola frase, que pueda leerse fuera de cualquier otro contexto, como una respuesta de enciclopedia, a la pregunta {keyword}.",
+        'PROMPT_GENERATE_SUBHEADINGS' : "Utilice la información contenida en este resumen: -- {combined_summary} -- Genere de 2 a 4 subtítulos para un artículo sobre el tema: '{keyword}' para cubrir todo el tema; No utilice números, no genere un subtítulo de introducción o conclusión.",
+        'PROMPT_GENERATE_PARAGRAPH' : "En un artículo titulado '{keyword}', escriba los párrafos del subtítulo: '{subheading}', utilizando la etiqueta <b> para las palabras importantes. No escriba el subtítulo ni haga una introducción. Instrucciones de estilo: procura que los párrafos y la longitud de las frases sean heterogéneos, ciñéndote principalmente a frases cortas y directas. No incluyas relleno. Cada frase debe aportar un valor añadido. No utilice siempre las palabras más naturales. Sea conversacional, empático, ocasionalmente humorístico, y utilice modismos, metáforas, anécdotas y diálogos naturales.",
+        'TITLE_RECAP_SECTION' : "Resumen",
+        'TITLE_FAQ_SECTION' : "Preguntas frecuentes",
+        'TITLE_INTERNAL_LINK' : "Para más información, consulte mi artículo sobre: <a href='{main_article_url}'>{main_article_keyword} ",
+        'TITLE_EXTERNAL_LINK' : "Enlaces útiles",
+        'PROMPT_GENERATE_FAQ_ANSWER' : "escriba una respuesta directa de una o dos frases como máximo a la pregunta: '{question}'. La respuesta debe poder leerse por sí sola sin ningún contexto (sin haber visto la pregunta).",
+        'PROMPT_GENERATE_TABLE_SUMMARY' : "A partir de esta información, cree una tabla que ayude al lector a comprender rápidamente el tema. La tabla debe ser fácil de leer tanto para un usuario como para un motor de búsqueda. Utilice la información de este artículo: '{combined_summary}'"
+
+    },
+}
+
+#Retrieve the language from --language argument
+
+current_prompts = prompts.get(args.language, prompts['en'])  # Fallback to English if the specified language is not found
+
+
 
 # Retrieve the site configuration based on the --site argument
 site_config = site_configs.get(args.site)
@@ -97,20 +166,6 @@ wp_auth_header = "Basic " + base64.b64encode(wp_auth.encode()).decode()
 main_article_question_answer = None
 
 
-
-def generate_wordpress_tag(keyword):
-    prompt = f"Generate a concise, relevant tag for an article about '{keyword}'. The tag should reflect the core topic and be suitable for SEO purposes."
-    response = openai.ChatCompletion.create(
-        model="gpt-4-0125-preview",
-        messages=[
-            {"role": "system", "content": "You're an AI trained to assist with digital content creation, including SEO optimization."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,
-        max_tokens=60
-    )
-    tag = response.choices[0].message['content'].strip()
-    return tag
 
 
 def create_wordpress_tag(tag_name):
@@ -149,18 +204,15 @@ def fetch_or_create_wordpress_tag(tag_name):
         return None
 
 
-
-
-
-def generate_image_metadata(keyword, photo_id):
+def generate_image_metadata(keyword, photo_id, current_prompts):
     model = "gpt-4-0125-preview"
     
     # Generate an alt tag using OpenAI based on the keyword
-    prompt = f"Générer un alt tag descriptif mais court pour une image sur le sujet: {keyword}."
+    prompt = current_prompts['PROMPT_GENERATE_IMAGE_METADATA'].format(keyword=keyword)
     response = openai.ChatCompletion.create(
         model=model,
         messages=[
-            {"role": "system", "content": "Tu es un assistant spécialiste du sujet."},
+            {"role": "system", "content": "You are an assistant specialized in the subject."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.5,
@@ -243,8 +295,6 @@ def adjust_image(img):
 
 
 
-
-
 def search_and_upload_photos(keyword, subheadings_count, wp_upload_endpoint, wp_auth):
     # First, generate a query for Pexels using the keyword
     prompt = f"in a one or two words, in english, what is this topic about?: '{keyword}'"
@@ -273,7 +323,7 @@ def search_and_upload_photos(keyword, subheadings_count, wp_upload_endpoint, wp_
         photo_id = photo['id']
 
         # Generate unique file name and alt tag for this photo
-        file_name, alt_tag = generate_image_metadata(keyword, photo_id)
+        file_name, alt_tag = generate_image_metadata(keyword, photo_id, current_prompts)
         
         # Download photo
         img_response = requests.get(photo_url)
@@ -385,9 +435,9 @@ def generate_with_model_retry(prompt, model="gpt-4-0125-preview", max_retries=3,
 
 
 
-def generate_meta_description(keyword):
+def generate_meta_description(keyword, current_prompts):
     # Initial prompt with length instructions
-    prompt = f"écrire une meta description concise pour le mot clef: '{keyword}'. La meta description doit donner envie de cliquer et intriguer le lecteur, elle doit inclure le mot clef et être entre 120 et 158 caractères."
+    prompt = current_prompts['PROMPT_GENERATE_META_DESCRIPTION'].format(keyword=keyword)
     
     # Attempt to generate a meta description that fits the length requirements
     retry_count = 0
@@ -410,12 +460,13 @@ def generate_meta_description(keyword):
 
     return meta_description
 
-def fetch_additional_information(keyword):
+def fetch_additional_information(keyword, current_prompts):
     url = "https://google.serper.dev/search"
+    country_code = current_prompts['COUNTRY_CODE']
     payload = json.dumps({
         "q": keyword,
-        "gl": "fr",
-        "hl": "fr",
+        "gl": country_code,
+        "hl": country_code,
         "autocorrect": False
     })
     headers = {
@@ -459,21 +510,28 @@ def split_into_paragraphs(text, min_sentences=1, max_sentences=2):
 
 
 
-def generate_opinion_section_with_paragraphs(keyword, related_searches):
+def generate_opinion_section_with_paragraphs(keyword, related_searches, current_prompts):
     if not related_searches:
         print("No related searches found for generating the opinion section.")
         return ""
     
+    # Convert list of related searches into a comma-separated string, handling French conjunctions appropriately
     queries_str = ", ".join(related_searches[:-1]) + " et " + related_searches[-1] if len(related_searches) > 1 else related_searches[0]
-    prompt = f"Ecrire à la première personne un texte d'opinion sur la question {keyword}, inclure une anecdote et utiliser les expressions suivantes: {queries_str}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
+    prompt = current_prompts['PROMPT_GENERATE_OPINION_SECTION'].format(keyword=keyword, queries_str=queries_str)
+
+    print("Generating EEAT section...")
+
     
     opinion_text = generate_with_model_retry(prompt, model="gpt-4-0125-preview", max_tokens=4096)
     
     # Use the updated splitting logic.
     paragraphs = split_into_paragraphs(opinion_text)
+
+    opinion_section_title = current_prompts['TITLE_GENERATE_OPINION_SECTION'].format(keyword=keyword)
     
-    # Format paragraphs for WordPress
-    opinion_section = "<!-- wp:heading -->\n<h2>Mon avis (opinion)</h2>\n<!-- /wp:heading -->\n"
+    #Format paragraphs for WordPress
+    opinion_section = f"<!-- wp:heading -->\n<h2>{opinion_section_title}</h2>\n<!-- /wp:heading -->\n"
+
     for paragraph in paragraphs:
         opinion_section += f"<!-- wp:paragraph -->\n<p>{paragraph}</p>\n<!-- /wp:paragraph -->\n"
     
@@ -517,11 +575,11 @@ def normalize_text(html):
     return BeautifulSoup(html, "html.parser").get_text().strip().lower()
 
 
-def generate_content(keyword, is_supporting_article=False, main_article_url=None, main_article_keyword=None, main_article_question=None, main_article_answer=None):
+def generate_content(keyword, current_prompts, is_supporting_article=False, main_article_url=None, main_article_keyword=None, main_article_question=None, main_article_answer=None):
     print(f"Generating content for keyword: {keyword}")
 
      # Fetch "People Also Ask" questions and top search results
-    people_also_ask_questions, top_search_results, related_searches = fetch_additional_information(keyword)
+    people_also_ask_questions, top_search_results, related_searches = fetch_additional_information(keyword, current_prompts)
 
     # Initialize list for scraped contents and a counter for successful scrapes
     scraped_contents = []
@@ -542,12 +600,14 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
         print("Warning: Failed to scrape sufficient content. Proceeding with what we have.")
 
     # Generate a combined summary of the scraped contents
-    combined_summary = generate_combined_summary(scraped_contents)
+    combined_summary = generate_combined_summary(scraped_contents, current_prompts)
     table_summary = generate_table_summary(combined_summary)  # Pass the combined_summary as an argument
 
     
     # Initial title generation attempt
-    title_prompt = f"Utiliser les informations contenues dans ce résumé: {combined_summary} : Générer un titre concis (moins de 60 caractères) pour un article sur '{keyword}'. Le titre doit inclure le mot clef exact au début, et des parenthèses. ne pas inclure l'année."
+
+    print(f"Generating SEO title for keyword: {keyword}")
+    title_prompt = current_prompts['PROMPT_GENERATE_TITLE'].format(keyword=keyword, combined_summary=combined_summary)
     title = generate_with_model_retry(title_prompt, model="gpt-4-0125-preview")
 
     # Remove double quotes from the title and initialize shortest_title
@@ -573,7 +633,9 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     title = shortest_title
 
     # Generate introduction
-    intro_prompt = f"Utiliser les informations contenues dans ce résumé pour écrire une introduction de deux phrases pour un article ciblant le mot clef: {keyword}: {combined_summary}. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
+
+    print(f"Generating Intro sentences...")
+    intro_prompt = current_prompts['PROMPT_GENERATE_INTRO'].format(keyword=keyword, combined_summary=combined_summary)
     intro = generate_with_model_retry(intro_prompt, model="gpt-4-0125-preview", max_tokens=1000)
     intro_block = f"<!-- wp:paragraph -->\n<p>{intro}</p>\n<!-- /wp:paragraph -->"
 
@@ -581,7 +643,9 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     keyword_block = f"<!-- wp:paragraph -->\n<p><em>{keyword}</em></p>\n<!-- /wp:paragraph -->"
 
     # Generate direct answer
-    direct_answer_prompt = f"Utiliser les informations contenues dans ce résumé: - {combined_summary} - écrire une réponse directe, d'une seule phrase, et qui peut se lire en dehors de tout autre contexte, comme une réponse d'encyclopédie, à la question {keyword}."
+
+    print(f"Generating main answer...")
+    direct_answer_prompt = current_prompts['PROMPT_GENERATE_DIRECT_ANSWER'].format(keyword=keyword, combined_summary=combined_summary)
     direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=200)
     global main_article_question_answer
     main_article_question_answer = direct_answer
@@ -594,7 +658,10 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     body = f"{intro_block}\n\n{keyword_block}\n\n{direct_answer_block}\n\n{shortcode_block}"
 
     # Generate subheadings and corresponding paragraphs
-    subheading_prompt = f"Utiliser les informations contenues dans ce résumé: -- {combined_summary} -- Générer 2 à 4 sous-titres pour un article sur le sujet: '{keyword}' permettant de couvrir le sujet totalement; Ne pas utiliser de numéros, ne pas générer de sous-titre d'introduction ou de conclusion."
+
+
+    print(f"Generating Subheadings...")
+    subheading_prompt = current_prompts['PROMPT_GENERATE_SUBHEADINGS'].format(keyword=keyword, combined_summary=combined_summary)
     subheadings = generate_with_model_retry(subheading_prompt, model="gpt-4-0125-preview", max_tokens=1000).split('\n')
 
     # Print and clean the generated subheadings
@@ -611,9 +678,6 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     print("Generated Subheadings:", cleaned_subheadings)
 
     # Searching for Images on Pexels
-
-    # Call the function to search for photos, download them, and upload to WordPress
-
     # Define WordPress media upload endpoint and authentication credentials before using them
     wp_auth = f"{wp_username}:{wp_password}"  # This might need encoding or specific formatting depending on your auth method
     
@@ -633,7 +697,10 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
     # Iterate through each cleaned subheading
     for subheading in cleaned_subheadings:
         subheading_block = f"<!-- wp:heading -->\n<h2>{subheading}</h2>\n<!-- /wp:heading -->\n"
-        paragraph_prompt = f"Dans un article intitulé {keyword}, écrire les paragraphes pour le sous-titre: {subheading}, en utilisant la balise <b> pour les mots importants. Ne pas écrire le sous-titre ni faire d'introduction. Instructions de style: Assurez-vous que les paragraphes et les longueurs de phrases sont hétérogènes, en vous en tenant principalement à des phrases courtes et directes. N'inclure aucun remplissage. Chaque phrase doit apporter de la valeur. N'utilisez pas toujours les mots les plus naturels. Soyez conversationnel, empathique, occasionnellement humoristique, et utilisez des idiomes, métaphores, anecdotes, et un dialogue naturel."
+
+
+        print(f"Generating Paragraph...")
+        paragraph_prompt = current_prompts['PROMPT_GENERATE_PARAGRAPH'].format(keyword=keyword, subheading=subheading)
         paragraph = generate_with_model_retry(paragraph_prompt, model="gpt-4-0125-preview", max_tokens=4096)
         
         paragraphs = paragraph.split('\n')
@@ -670,33 +737,41 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
         body += f"\n{subheading_block}\n{image_html}\n{paragraph_blocks}"
 
     # Generate "Récapitulatif" heading and table only once, correctly placed before the FAQ section
-    recap_header = "<!-- wp:heading -->\n<h2>Récapitulatif</h2>\n<!-- /wp:heading -->\n"
+
+    recap_header_title = current_prompts['TITLE_RECAP_SECTION'].format(keyword=keyword)
+    recap_header = f"<!-- wp:heading -->\n<h2>{recap_header_title}</h2>\n<!-- /wp:heading -->\n"
     table_summary = generate_table_summary(body)  # Generate table based on content generated so far
     formatted_table = format_table_for_wordpress(table_summary)  # Format the table for WordPress
     body += recap_header + formatted_table  # Append the "Récapitulatif" section and table to the body
 
     # Generate the opinion section content:
-    opinion_section = generate_opinion_section_with_paragraphs(keyword, related_searches)
+    opinion_section = generate_opinion_section_with_paragraphs(keyword, related_searches, current_prompts)
     body += f"\n{opinion_section}\n"
 
     # Start of the FAQ section with a header
-    faq_header = "<!-- wp:heading -->\n<h2>Questions fréquentes</h2>\n<!-- /wp:heading -->\n"
+    faq_header_title = current_prompts['TITLE_FAQ_SECTION'].format(keyword=keyword)
+    faq_header = f"<!-- wp:heading -->\n<h2>{faq_header_title}</h2>\n<!-- /wp:heading -->\n"
     body += faq_header
 
 
     if is_supporting_article and main_article_question and main_article_answer and main_article_url:
         # Include the main article's question, answer, and a link to the main article
+
+        internal_link_title = current_prompts['TITLE_INTERNAL_LINK'].format(keyword=keyword)
         main_question_block = f"<!-- wp:heading {{\"level\":3}} -->\n<h3>{main_article_question}</h3>\n<!-- /wp:heading -->\n"
-        main_answer_block = f"<!-- wp:paragraph -->\n<p>{main_article_answer}</p><p>Pour plus d'informations, voir mon article sur: <a href='{main_article_url}'>{main_article_keyword}</a>.</p>\n<!-- /wp:paragraph -->\n"
+        main_answer_block = f"<!-- wp:paragraph -->\n<p>{main_article_answer}</p><p>{internal_link_title}<a href='{main_article_url}'>{main_article_keyword}</a>.</p>\n<!-- /wp:paragraph -->\n"
         body += main_question_block + main_answer_block
 
 
     for question in people_also_ask_questions:
         # Wrap each question in an H3 Gutenberg block
         question_block = f"<!-- wp:heading {{\"level\":3}} -->\n<h3>{question}</h3>\n<!-- /wp:heading -->\n"
-    
+
+
         # Generate a direct answer for the question
-        direct_answer_prompt = f"écrire une réponse de une ou deux phrases maximum, directe à la question: '{question}'. La réponse doit pouvoir être lue seule en dehors de tout contexte (sans avoir vu la question)."
+
+        print(f"Generating FAQ answer for {question}...")
+        direct_answer_prompt = current_prompts['PROMPT_GENERATE_FAQ_ANSWER'].format(question=question)
         direct_answer = generate_with_model_retry(direct_answer_prompt, model="gpt-4-0125-preview", max_tokens=200)
     
         # Wrap the answer in a paragraph Gutenberg block
@@ -706,7 +781,9 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
         body += question_block + answer_block
 
     # Now, append the top search results as links formatted as a bullet point list at the end of the article
-    search_results_header = "<!-- wp:heading -->\n<h2>Liens Utiles</h2>\n<!-- /wp:heading -->\n"
+
+    external_link_title = current_prompts['TITLE_EXTERNAL_LINK'].format(keyword=keyword)
+    search_results_header = f"<!-- wp:heading -->\n<h2>{external_link_title}</h2>\n<!-- /wp:heading -->\n"
     search_results_list_start = "<!-- wp:list -->\n<ul>\n"  # Start of list block
     search_results_list_items = ""
 
@@ -730,12 +807,10 @@ def generate_content(keyword, is_supporting_article=False, main_article_url=None
 
 
 def generate_table_summary(combined_summary):
-    prompt = (
-        "A partir de ces informations, créer un tableau utile pour le lecteur pour comprendre rapidement le sujet."
-        "Le tableau doit être facile a lire pour un utilisateur comme pour un moteur de recherche."
-        "Utiliser les informations de cet article:\n\n"
-        f"{combined_summary}"
-    )
+
+    print(f"Generating Summary Table...")
+
+    prompt = current_prompts['PROMPT_GENERATE_TABLE_SUMMARY'].format(combined_summary=combined_summary)
     # Assuming generate_with_model_retry can handle parameters for ChatCompletion
     table_summary = generate_with_model_retry(
         prompt=prompt,
@@ -783,7 +858,9 @@ def format_table_for_wordpress(table_summary):
 def integrate_table_summary(article_content):
     table_summary = generate_table_summary(article_content)
     formatted_table = format_table_for_wordpress(table_summary)
-    recap_section = "<!-- wp:heading -->\n<h2>Récapitulatif</h2>\n<!-- /wp:heading -->\n" + formatted_table
+
+    recap_header_title = current_prompts['TITLE_RECAP_SECTION'].format(keyword=keyword)
+    recap_section = f"<!-- wp:heading -->\n<h2>{recap_header_title}</h2>\n<!-- /wp:heading -->\n" + formatted_table
     # Append the Récapitulatif section to the article content
     return article_content + "\n\n" + recap_section
 
@@ -931,9 +1008,12 @@ def scrape_webpage_content(url):
         return ""
 
 
-def generate_combined_summary(contents):
+def generate_combined_summary(contents, current_prompts):
+    print(f"Combining scrapped article into single summary...")
+    combine_summary_ai_prompt = current_prompts['PROMPT_GENERATE_COMBINED_SUMMARY']
     # Combine the initial summaries
-    combined_summary_prompt = "Résumer ces articles en un récapitulatif exhaustif:\n\n" + "\n\n---\n\n".join(contents)
+
+    combined_summary_prompt = f"{combine_summary_ai_prompt}" + "\n\n---\n\n".join(contents)
     
     print("Generating combined summary...")  # Inform the user that summary generation is starting.
     
@@ -983,6 +1063,7 @@ def create_and_post_supporting_articles(paa_questions, main_article_url, main_ar
         print(f"Generating supporting article for question: {question}")
         title, content = generate_content(
             keyword=question,
+            current_prompts=current_prompts,
             is_supporting_article=True,
             main_article_url=main_article_url,
             main_article_keyword=main_article_keyword,
@@ -992,7 +1073,7 @@ def create_and_post_supporting_articles(paa_questions, main_article_url, main_ar
         
         
         # Generate a meta description for the supporting article
-        meta_description = generate_meta_description(question)
+        meta_description = generate_meta_description(question, current_prompts)
         
         # Fetch the latest media ID if you plan to use images
         latest_media_id = fetch_latest_media_id(wp_media_endpoint, wp_auth_header)
@@ -1013,7 +1094,7 @@ def process_keyword(keyword_data, category_name, wp_api_url, wp_auth_header, wp_
 
     # Fetch "People Also Ask" questions and other related information for the keyword
     print("Fetching additional information for keyword...")
-    people_also_ask_questions, top_search_results, related_searches = fetch_additional_information(keyword_data['question'])
+    people_also_ask_questions, top_search_results, related_searches = fetch_additional_information(keyword_data['question'], current_prompts)
     print(f"Fetched {len(people_also_ask_questions)} PAA questions, {len(top_search_results)} search results, {len(related_searches)} related searches")
 
     # Fetch or create a WordPress tag using the main article keyword
@@ -1029,6 +1110,7 @@ def process_keyword(keyword_data, category_name, wp_api_url, wp_auth_header, wp_
     print("Generating content for main article...")
     title, content = generate_content(
         keyword=keyword_data['question'],
+        current_prompts=current_prompts,
         is_supporting_article=False,
         main_article_url=None,
         main_article_keyword=main_article_keyword,
@@ -1036,7 +1118,7 @@ def process_keyword(keyword_data, category_name, wp_api_url, wp_auth_header, wp_
         main_article_answer=None
     )
 
-    meta_description = generate_meta_description(keyword_data['question'])
+    meta_description = generate_meta_description(keyword_data['question'], current_prompts)
     latest_media_id = fetch_latest_media_id(wp_media_endpoint, wp_auth_header)
     print(f"Latest media ID: {latest_media_id}")
 
