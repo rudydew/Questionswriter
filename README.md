@@ -58,6 +58,7 @@ Ensure that you have valid credentials for the MySQL database, OpenAI API, and W
 
 For the Yoast meta description field to work, add the following to your theme's functions.php: 
 
+```php
 /*** Rest api field for yoast meta desc ***/
 add_action('init', function() {
     register_post_meta('post', '_yoast_wpseo_metadesc', [
@@ -66,3 +67,4 @@ add_action('init', function() {
         'show_in_rest' => true,
     ]);
 });
+```
