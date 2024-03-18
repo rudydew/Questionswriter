@@ -757,9 +757,8 @@ def generate_content(keyword, current_prompts, is_supporting_article=False, main
     if is_supporting_article and main_article_question and main_article_answer and main_article_url:
         # Include the main article's question, answer, and a link to the main article
 
-        internal_link_title = current_prompts['TITLE_INTERNAL_LINK'].format(keyword=keyword)
         main_question_block = f"<!-- wp:heading {{\"level\":3}} -->\n<h3>{main_article_question}</h3>\n<!-- /wp:heading -->\n"
-        main_answer_block = f"<!-- wp:paragraph -->\n<p>{main_article_answer}</p><p>{internal_link_title}<a href='{main_article_url}'>{main_article_keyword}</a>.</p>\n<!-- /wp:paragraph -->\n"
+        main_answer_block = f"<!-- wp:paragraph -->\n<p>{main_article_answer}</p><p><a href='{main_article_url}'>{main_article_keyword}</a>.</p>\n<!-- /wp:paragraph -->\n"
         body += main_question_block + main_answer_block
 
 
