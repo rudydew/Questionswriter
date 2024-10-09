@@ -18,14 +18,14 @@ from openai.error import APIError, ServiceUnavailableError
 
 # MySQL database credentials
 db_config = {
-    'host': '***REMOVED***',
-    'user': '***REMOVED***',
-    'password': '***REMOVED***',
-    'database': '***REMOVED***'
+    'host': '',
+    'user': '',
+    'password': '',
+    'database': ''
 }
 
 # OpenAI Api key
-openai.api_key = '***REMOVED***'
+openai.api_key = ''
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Post articles to WordPress with a specified category.')
@@ -47,32 +47,32 @@ print(f"Skip support articles: {args.skipsupport}")
 
 
 site_configs = {
-    '***REMOVED***': {
-        'wp_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/posts',
-        'wp_media_endpoint': 'https://www.***REMOVED***.com/wp-json/wp/v2/media',
-        'wp_tags_endpoint' : 'https://www.***REMOVED***.com/wp-json/wp/v2/tags',
-        'wp_categories_endpoint' : 'https://www.***REMOVED***.com/wp-json/wp/v2/categories',
+    'site1': {
+        'wp_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
         'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
-        'wp_username': '***REMOVED***',
-        'wp_password': '***REMOVED***'
+        'wp_username': 'user',
+        'wp_password': 'password'
     },
-    '***REMOVED***': {
-        'wp_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/posts',
-        'wp_media_endpoint': 'https://***REMOVED***.fr/wp-json/wp/v2/media',
-        'wp_tags_endpoint' : 'https://***REMOVED***.fr/wp-json/wp/v2/tags',
-        'wp_categories_endpoint' : 'https://***REMOVED***.fr/wp-json/wp/v2/categories',
-        'wp_api_url' : 'https://***REMOVED***.fr/wp-json',
-        'wp_username': 'rudy@***REMOVED***.fr',
-        'wp_password': '***REMOVED***'
+    'site2': {
+        'wp_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
+        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_username': 'user',
+        'wp_password': 'password'
     },
-    '***REMOVED***': {
-        'wp_endpoint': 'https://***REMOVED***.co/wp-json/wp/v2/posts',
-        'wp_media_endpoint': 'https://***REMOVED***.co/wp-json/wp/v2/media',
-        'wp_tags_endpoint' : 'https://***REMOVED***.co/wp-json/wp/v2/tags',
-        'wp_categories_endpoint' : 'https://***REMOVED***.co/wp-json/wp/v2/categories',
-        'wp_api_url' : 'https://***REMOVED***.co/wp-json',
-        'wp_username': '***REMOVED***',
-        'wp_password': '***REMOVED***'
+    'site3': {
+        'wp_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/posts',
+        'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
+        'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
+        'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
+        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_username': 'user',
+        'wp_password': 'password'
     }
 
 }
@@ -302,7 +302,7 @@ def search_and_upload_photos(keyword, subheadings_count, wp_upload_endpoint, wp_
     print(f"Pexel query generated: \"{pexels_query}\"")
     
     url = "https://api.pexels.com/v1/search"
-    headers = {"Authorization": "***REMOVED***"}
+    headers = {"Authorization": "PEXEL API KEY GOES HERE"}
     params = {
         "query": pexels_query,
         "orientation": "landscape",
@@ -470,7 +470,7 @@ def fetch_additional_information(keyword, current_prompts):
         "autocorrect": False
     })
     headers = {
-        'X-API-KEY': '***REMOVED***',  # Use your actual API key
+        'X-API-KEY': 'SERPER.DEV API KEY GOES HERE',  # Use your actual API key
         'Content-Type': 'application/json'
     }
 
