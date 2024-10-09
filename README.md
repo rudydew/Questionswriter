@@ -1,8 +1,18 @@
 # WordPress Response Post AI Automation Script
 
-This Python script automates the process of posting articles to WordPress sites with specified categories, while also finding images on pexels, creating unique images with pixel adjustments, SEO tags, and handling MySQL database interactions for keyword management.
+This Python script automates the process of researching, creating, and publishing question / answer based articles.
 
-It also scrapes relevant questions on google using serper.dev's api to add relevant context to the articles.
+- It scrapes the web pages for top three results on google (uses serper.dev API to get the results) for the question
+- creates a summary (openAI API) of the critical information contained in these 3 pages
+- generates a short, snippet-optimized answer
+- generates semantically relevant subheadings, and content
+- scrapes relevant images from pexels (pexels API)
+- manipulates the images by rotating, zoom, color filters... to create a unique file
+- generates alt tags
+- generates a summary table with relevant columns
+- scrapes relevant additional questions (serper.dev API)
+- answers each question
+- uploads the media files to wordpress library, generates and publish as draft the complete wordpress article.
 
 ## Requirements
 
