@@ -52,7 +52,7 @@ site_configs = {
         'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
         'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
         'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
-        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_api_url' : 'https://www.yogowo.com/wp-json',
         'wp_username': 'user',
         'wp_password': 'password'
     },
@@ -61,7 +61,7 @@ site_configs = {
         'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
         'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
         'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
-        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_api_url' : 'https://www.yogowo.com/wp-json',
         'wp_username': 'user',
         'wp_password': 'password'
     },
@@ -70,7 +70,7 @@ site_configs = {
         'wp_media_endpoint': 'https://www.yoursite.com/wp-json/wp/v2/media',
         'wp_tags_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/tags',
         'wp_categories_endpoint' : 'https://www.yoursite.com/wp-json/wp/v2/categories',
-        'wp_api_url' : 'https://www.***REMOVED***.com/wp-json',
+        'wp_api_url' : 'https://www.yogowo.com/wp-json',
         'wp_username': 'user',
         'wp_password': 'password'
     }

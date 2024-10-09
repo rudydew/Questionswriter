@@ -1,6 +1,8 @@
-# WordPress Article Automation Script
+# WordPress Response Post AI Automation Script
 
-This Python script automates the process of posting articles to WordPress sites with specified categories, while also incorporating image adjustments, SEO tags, and handling MySQL database interactions for keyword management.
+This Python script automates the process of posting articles to WordPress sites with specified categories, while also finding images on pexels, creating unique images with pixel adjustments, SEO tags, and handling MySQL database interactions for keyword management.
+
+It also scrapes relevant questions on google using serper.dev's api to add relevant context to the articles.
 
 ## Requirements
 
@@ -22,6 +24,8 @@ MySQL Database and OpenAI API Key:
 Ensure that your MySQL database access credentials and your OpenAI API key are correctly configured within the script.
 Python Libraries:
 Install the required Python libraries as mentioned above.
+Pexels API Key
+Serper.dev api key
 
 
 ## Usage
@@ -38,7 +42,7 @@ The script is designed to accept command-line arguments for dynamic operation. H
 ### Example Command
 
 ```bash
-python script.py --site ***REMOVED*** --category "Health" --fetch "Nutrition" --limit 2 --language fr --skipsupport
+python script.py --site yogowo --category "Health" --fetch "Nutrition" --limit 2 --language fr --skipsupport
 ```
 
 ## Features
